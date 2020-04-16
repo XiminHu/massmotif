@@ -1,9 +1,13 @@
 import pymzml
 import matplotlib.pyplot as plt
 import numpy as np
-import plotly.graph_objects as go
-import pandas as pd
 
+import pyteomics
+from pyteomics import mzml, auxiliary
+
+import plotly.graph_objects as go
+
+import pandas as pd
 
 def get_scans(path, ms_all = False, ms_lv = 1):
     run = pymzml.run.Reader(path)
@@ -17,7 +21,6 @@ def get_scans(path, ms_all = False, ms_lv = 1):
             scans.append(scan)
             
     return scans
-
 
 def motif_seek(ms2_scans, motifs, error = 0.002, noise_level = 10, precursor_base = 500, top_frags = 5, precursor_dist = 50, mzrange = [0, 500], rtrange = [0, 20]):
     motif_result = []
@@ -48,14 +51,16 @@ def motif_seek(ms2_scans, motifs, error = 0.002, noise_level = 10, precursor_bas
         mtf_count = 0
         for mtf in motif_range:
             mtf_hit = neutral_loss[(mtf[0] < neutral_loss) & (neutral_loss < mtf[1])]
+            if mtf[0] == motifs[0] - error: #Only show the mtf_error for first motif
+                mtf_error = mtf_hit - motifs[0]
             if len(mtf_hit) > 0:
                 mtf_count += 1
         
         if mtf_count == len(motifs):
-            motif_result.append([scan.selected_precursors[0]['mz'], round(scan.scan_time[0],2), scan.ID])
+            motif_result.append([scan.selected_precursors[0]['mz'], round(scan.scan_time[0],2), scan.ID, np.round(mtf_error, 4)])
     
     result = sorted(motif_result)
-    d_motif = pd.DataFrame(result, columns = ['mz', 'rt', 'scanID']) 
+    d_motif = pd.DataFrame(result, columns = ['mz', 'rt', 'scanID','motif_error']) 
     d_motif = d_motif[(d_motif['mz'] < mzrange[1]) 
                     & (d_motif['mz'] > mzrange[0])
                     & (d_motif['rt'] > rtrange[0])
@@ -66,7 +71,6 @@ def motif_seek(ms2_scans, motifs, error = 0.002, noise_level = 10, precursor_bas
 
     return d_motif
 
-
 def motif_export(motif_result, export_name='Motif.xlsx'):
     writer = pd.ExcelWriter(export_name, engine='xlsxwriter')
     for i,j in motif_result.groupby('mz'):
@@ -75,7 +79,6 @@ def motif_export(motif_result, export_name='Motif.xlsx'):
     writer.save()
     
     return
-
 
 def find_scan(ms2s, scanid, interactive = True):
     
@@ -118,3 +121,18 @@ def find_scan(ms2s, scanid, interactive = True):
         plt.xlim(0,340)
 
     return 
+
+def batch_scans(path, remove_noise = True, thres_noise = 1000):
+    all_files = glob.glob(path + "/*.mzML")
+    scans = []
+    file_list = []
+    for file in tqdm(all_files):
+        scan = get_scans(file)
+        if remove_noise == True:
+            noise_removal(scan, thres_noise)
+        scans.append(scan)
+        file_list.append(Path(file).name)
+    print(file_list)
+    print('Batch read finished!')
+    
+    return scans, file_list
