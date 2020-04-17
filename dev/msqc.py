@@ -36,11 +36,15 @@ def ms_qc(mzml_scans):
     # ms1 QC
     tot_ms1 = len(ms1)
     TIC = []
+    topni = []
     for scan in ms1:
         TIC.append(scan.TIC)
+        #Find Nth high feature intensity in each scan
+        topni.append(np.sort(scans[0].i)[-5])
         
     tic_h = max(TIC)
     tic_avg = sum(TIC) / len(TIC)
+    min_topni = min(topni)
     
     #ms2 QC
     if len(ms2) != 0:
@@ -57,7 +61,7 @@ def ms_qc(mzml_scans):
         l_precursor_i = min(precursor_i)
         precursor_range = str(round(min(precursor_mz), 2)) + '~' + str(round(max(precursor_mz),2))
     
-    result = [tot_ms1, "{:.2e}".format(tic_h), "{:.2e}".format(tic_avg), tot_ms2, round(avg_response_h, 2), "{:.2e}".format(avg_precursor_i), round(l_precursor_i, 2), precursor_range]
+    result = [tot_ms1, "{:.2e}".format(tic_h), "{:.2e}".format(tic_avg), tot_ms2, round(avg_response_h, 2), "{:.2e}".format(avg_precursor_i), round(l_precursor_i, 2), precursor_range, min_topni]
 
     return result
 
@@ -87,7 +91,7 @@ def qc_gen(path):
         result = [file_list[index]] + result
         qc_result.append(result)
     print('Generating dataframe...')
-    col = ['file_name', 'total_ms1_scan', 'max_tic', 'avg_tic','tot_ms2', 'avg_ms2_max', 'avg_ms2precursor_i', 'min_ms2precursor_i', 'ms2precursor_range']
+    col = ['file_name', 'total_ms1_scan', 'max_tic', 'avg_tic','tot_ms2', 'avg_ms2_max', 'avg_ms2precursor_i', 'min_ms2precursor_i', 'ms2precursor_range', 'min_topn_intensity']
     d_result = pd.DataFrame(qc_result, columns = col)
     print('Generating report to csv...')
     
